@@ -76,110 +76,81 @@ const Map = () => {
   }, []);
   let controller;
   const addClustersToMap = useRef(
- 
+
     debounce(async (minLat, maxLat, minLon, maxLon, zoomLevel) => {
       if (!superclusterRef.current) return;
       if (controller) {
         controller.abort();
       }
-  
+
       // Create a new AbortController for the new request
       controller = new AbortController();
-      const { data, errors } = await axios.get("http://localhost:3000/getby", {
-        params: {
-          minLat, maxLat, minLon, maxLon, zoomLevel
-        },
-        signal: controller.signal  // Attach the signal here
-      });
-      if (!errors) {
-        const newCluster = data;
-        clusterLayer.current.removeAll();
-        if (newCluster?.length > 0) {
-          newCluster?.forEach((cluster) => {
-            const [longitude, latitude] = cluster.geometry.coordinates;
-            const isCluster = cluster.properties.cluster;
-            let size = 30;
-            let pointCount = isCluster ? cluster.properties.point_count : 0;
-            if (isCluster) {
-              size = Math.min(70, Math.max(30, pointCount * 0.5));
-            }
 
-            const pinIconSvgString = ReactDOMServer.renderToStaticMarkup(
-              <SingleOneMarker
-                fillColor={
-                  cluster?.stage_color ? cluster?.stage_color : "black"
-                }
-                className="w-6 h-6 text-blue-500 "
-              />
-            );
-            const encodedPinIconSvg = encodeURIComponent(pinIconSvgString);
-            const symbol = isCluster
-              ? {
-                type: "simple-marker",
-                style: "circle",
-                text: cluster.properties.point_count_abbreviated.toString(),
-                label: pointCount.toString(),
-                color:
-                  true
-                    ? "#1F2836"
-                    : "#5789D7",
-                size: `${size}px`,
-                outline: {
-                  color: "white",
-                  width: 1.25,
-                },
-                font: {
-                  size: "12px",
-                  family: "sans-serif",
-                  weight: "bold",
-                },
+      try {
+        const { data, errors } = await axios.get("/api/getby", {
+          params: {
+            minLat, maxLat, minLon, maxLon, zoomLevel
+          },
+          signal: controller.signal  // Attach the signal here
+        });
+        
+        if (!errors) {
+          const newCluster = data;
+          clusterLayer.current.removeAll();
+          if (newCluster?.length > 0) {
+            newCluster?.forEach((cluster) => {
+              const [longitude, latitude] = cluster.geometry.coordinates;
+              const isCluster = cluster.properties.cluster;
+              let size = 30;
+              let pointCount = isCluster ? cluster.properties.point_count : 0;
+              if (isCluster) {
+                size = Math.min(70, Math.max(30, pointCount * 0.5));
               }
-              : {
-                type: "picture-marker",
-                url: "data:image/svg+xml;charset=UTF-8," + encodedPinIconSvg,
-                width: "40px",
-                height: "40px",
-              };
 
-            const graphic = new Graphic({
-              geometry: {
-                type: "point",
-                longitude,
-                latitude,
-              },
-              symbol,
-              id: cluster?.id,
-              text: cluster.properties.point_count || 1,
-              cluster: isCluster,
-              attributes: cluster.properties,
-              coordinates: cluster.geometry.coordinates,
-              size: size,
-              bounding_box: cluster?.bounding_box,
-            });
-
-            clusterLayer.current.add(graphic);
-            if (isCluster) {
-              const labelGraphic = new Graphic({
-                geometry: {
-                  type: "point",
-                  longitude,
-                  latitude,
-                },
-                symbol: {
-                  type: "text",
-                  color: "white",
-                  haloColor: "black",
-                  haloSize: "1px",
+              const pinIconSvgString = ReactDOMServer.renderToStaticMarkup(
+                <SingleOneMarker
+                  fillColor={
+                    cluster?.stage_color ? cluster?.stage_color : "black"
+                  }
+                  className="w-6 h-6 text-blue-500 "
+                />
+              );
+              const encodedPinIconSvg = encodeURIComponent(pinIconSvgString);
+              const symbol = isCluster
+                ? {
+                  type: "simple-marker",
+                  style: "circle",
                   text: cluster.properties.point_count_abbreviated.toString(),
-                  xoffset: 0,
-                  yoffset: 0,
+                  label: pointCount.toString(),
+                  color:
+                    true
+                      ? "#1F2836"
+                      : "#5789D7",
+                  size: `${size}px`,
+                  outline: {
+                    color: "white",
+                    width: 1.25,
+                  },
                   font: {
                     size: "12px",
                     family: "sans-serif",
                     weight: "bold",
                   },
+                }
+                : {
+                  type: "picture-marker",
+                  url: "data:image/svg+xml;charset=UTF-8," + encodedPinIconSvg,
+                  width: "40px",
+                  height: "40px",
+                };
+
+              const graphic = new Graphic({
+                geometry: {
+                  type: "point",
+                  longitude,
+                  latitude,
                 },
-                cluster_id: cluster?.id,
+                symbol,
                 id: cluster?.id,
                 text: cluster.properties.point_count || 1,
                 cluster: isCluster,
@@ -188,11 +159,47 @@ const Map = () => {
                 size: size,
                 bounding_box: cluster?.bounding_box,
               });
-              clusterLayer.current.add(labelGraphic);
-            }
-          });
+
+              clusterLayer.current.add(graphic);
+              if (isCluster) {
+                const labelGraphic = new Graphic({
+                  geometry: {
+                    type: "point",
+                    longitude,
+                    latitude,
+                  },
+                  symbol: {
+                    type: "text",
+                    color: "white",
+                    haloColor: "black",
+                    haloSize: "1px",
+                    text: cluster.properties.point_count_abbreviated.toString(),
+                    xoffset: 0,
+                    yoffset: 0,
+                    font: {
+                      size: "12px",
+                      family: "sans-serif",
+                      weight: "bold",
+                    },
+                  },
+                  cluster_id: cluster?.id,
+                  id: cluster?.id,
+                  text: cluster.properties.point_count || 1,
+                  cluster: isCluster,
+                  attributes: cluster.properties,
+                  coordinates: cluster.geometry.coordinates,
+                  size: size,
+                  bounding_box: cluster?.bounding_box,
+                });
+                clusterLayer.current.add(labelGraphic);
+              }
+            });
+          }
         }
+      } catch (error) {
+        console.error(error)
       }
+
     }, 150)
   ).current;
   useEffect(() => {
@@ -276,7 +283,7 @@ const Map = () => {
         console.error('Error loading ArcGIS modules: ', err);
       });
     addClustersToMap()
-  let  isZooming = false;
+    let isZooming = false;
     mapView.on('mouse-wheel', (event) => {
       event.stopPropagation();
       if (isZooming) return;

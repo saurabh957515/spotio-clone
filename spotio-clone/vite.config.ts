@@ -15,6 +15,7 @@ export default defineConfig({
         bigint: true,
       },
     },
+ 
   },
   build: {
     target: 'esnext', //
@@ -23,4 +24,9 @@ export default defineConfig({
       transformMixedEsModules: true,
     },
   },
+  server: {
+    proxy: {
+        '/api': 'http://localhost:3000', // Example proxy setup
+    },
+},
 })

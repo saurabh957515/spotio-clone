@@ -17,9 +17,8 @@ let Supercluster;
   Supercluster = module.default; // Ensure you're accessing the default export
 })();
 
-app.get("/getby", async (req, res) => {
-  const {    zoomLevel } = req?.query;
-
+app.get("/api/getby", async (req, res) => {
+  const { minLat, maxLat, minLon, maxLon, zoomLevel } = req?.query;
   await getLeadsInBoundingBox(minLat, maxLat, minLon, maxLon, zoomLevel)
     .then((leads) => {
       res.json(leads);
@@ -104,11 +103,13 @@ async function importData() {
   }
 }
 async function getLeadsInBoundingBox(
-  minLat, maxLat, minLon, maxLon,
+  minLat,
+  maxLat,
+  minLon,
+  maxLon,
   zoomLevel
 ) {
   try {
-  console.log(minLat, maxLat, minLon, maxLon);
     const db = await connectToMongoDB();
     const collection = db.collection("leads");
     const query = {
@@ -121,11 +122,13 @@ async function getLeadsInBoundingBox(
         },
       },
     };
+    const count = await collection.countDocuments(query);
+    console.log('total lead count',count)
     const leads = await collection.find(query).toArray();
     console.log(`Found ${leads.length} leads within the bounding box.`);
     const cluster = new Supercluster({
-      radius: 40, 
-      maxZoom: 16, 
+      radius: 40,
+      maxZoom: 16,
     });
     const points = leads.map((lead) => ({
       type: "Feature",
