@@ -99,10 +99,12 @@ const Map = () => {
           clusterLayer.current.removeAll();
           if (newCluster?.length > 0) {
             newCluster?.forEach((cluster) => {
-              const [longitude, latitude] = cluster.geometry.coordinates;
-              const isCluster = cluster.properties.cluster;
+              console.log(cluster)
+              const longitude=cluster?.centerLon;
+              const latitude=cluster?.centerLat;
+              const isCluster = true;
               let size = 30;
-              let pointCount = isCluster ? cluster.properties.point_count : 0;
+              let pointCount = isCluster ? cluster.count : 0;
               if (isCluster) {
                 size = Math.min(70, Math.max(30, pointCount * 0.5));
               }
@@ -110,7 +112,7 @@ const Map = () => {
               const pinIconSvgString = ReactDOMServer.renderToStaticMarkup(
                 <SingleOneMarker
                   fillColor={
-                    cluster?.stage_color ? cluster?.stage_color : "black"
+                   "black"
                   }
                   className="w-6 h-6 text-blue-500 "
                 />
@@ -120,7 +122,7 @@ const Map = () => {
                 ? {
                   type: "simple-marker",
                   style: "circle",
-                  text: cluster.properties.point_count_abbreviated.toString(),
+                  text: cluster.count.toString(),
                   label: pointCount.toString(),
                   color:
                     true
@@ -152,12 +154,9 @@ const Map = () => {
                 },
                 symbol,
                 id: cluster?.id,
-                text: cluster.properties.point_count || 1,
+                text: cluster.count || 1,
                 cluster: isCluster,
-                attributes: cluster.properties,
-                coordinates: cluster.geometry.coordinates,
                 size: size,
-                bounding_box: cluster?.bounding_box,
               });
 
               clusterLayer.current.add(graphic);
@@ -173,7 +172,7 @@ const Map = () => {
                     color: "white",
                     haloColor: "black",
                     haloSize: "1px",
-                    text: cluster.properties.point_count_abbreviated.toString(),
+                    text: cluster.count.toString(),
                     xoffset: 0,
                     yoffset: 0,
                     font: {
@@ -184,12 +183,9 @@ const Map = () => {
                   },
                   cluster_id: cluster?.id,
                   id: cluster?.id,
-                  text: cluster.properties.point_count || 1,
+                  text: cluster.count || 1,
                   cluster: isCluster,
-                  attributes: cluster.properties,
-                  coordinates: cluster.geometry.coordinates,
                   size: size,
-                  bounding_box: cluster?.bounding_box,
                 });
                 clusterLayer.current.add(labelGraphic);
               }
