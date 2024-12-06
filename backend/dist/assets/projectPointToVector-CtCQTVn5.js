@@ -1,0 +1,1 @@
+import{c4 as f,cT as i,cU as o,cV as p}from"./index-IeegpAPg.js";function x(n,r,c,a){if(f(n.spatialReference,c)){t[0]=n.x,t[1]=n.y;const e=n.z;return t[2]=e??a??0,i(t,n.spatialReference,0,r,c,0)}const s=o(n,c);return!!s&&(r[0]=s?.x,r[1]=s?.y,r[2]=s?.z??a??0,!0)}const t=p();export{x as c};

@@ -17,6 +17,8 @@ let Supercluster;
   Supercluster = module.default; // Ensure you're accessing the default export
 })();
 
+app.use(express.static(path.join(__dirname, "dist")));
+
 app.get("/api/getby", async (req, res) => {
   const { minLat, maxLat, minLon, maxLon, zoomLevel } = req?.query;
   await getLeadsInBoundingBox(minLat, maxLat, minLon, maxLon, zoomLevel)
@@ -122,16 +124,16 @@ async function getLeadsInBoundingBox(
         },
       },
     };
-    
+
     const boundingBox = [
       [parseFloat(minLon), parseFloat(minLat)], // Southwest corner
       [parseFloat(maxLon), parseFloat(maxLat)], // Northeast corner
     ];
     const centers = [
-      { lat: (minLat + maxLat) / 2, lon: minLon },           // Center of the left edge
-      { lat: (minLat + maxLat) / 2, lon: maxLon },           // Center of the right edge
-      { lat: minLat, lon: (minLon + maxLon) / 2 },           // Center of the bottom edge
-      { lat: maxLat, lon: (minLon + maxLon) / 2 },           // Center of the top edge
+      { lat: (minLat + maxLat) / 2, lon: minLon }, // Center of the left edge
+      { lat: (minLat + maxLat) / 2, lon: maxLon }, // Center of the right edge
+      { lat: minLat, lon: (minLon + maxLon) / 2 }, // Center of the bottom edge
+      { lat: maxLat, lon: (minLon + maxLon) / 2 }, // Center of the top edge
     ];
     // Aggregation pipeline
     const aggregationPipeline = centers.reduce((pipeline, center) => {
@@ -140,11 +142,11 @@ async function getLeadsInBoundingBox(
         $geoNear: {
           near: { type: "Point", coordinates: [center.lon, center.lat] },
           distanceField: "distance",
-          maxDistance: 40000,  // 40 km radius (in meters)
+          maxDistance: 40000, // 40 km radius (in meters)
           spherical: true,
         },
       };
-      
+
       const groupStage = {
         $group: {
           _id: null,
@@ -158,12 +160,12 @@ async function getLeadsInBoundingBox(
           },
         },
       };
-    
+
       // Add the stages to the pipeline
       pipeline.push(geoNearStage, groupStage);
-      
+
       return pipeline;
-    }, []); 
+    }, []);
     const result = await collection.aggregate(aggregationPipeline).toArray();
     console.log(result);
     return result;
@@ -183,7 +185,7 @@ function generateGrid(minLat, maxLat, minLon, maxLon, spacing) {
 
 // Utility for converting pixel radius to meters
 function pixelRadiusToMeters(pixelRadius, zoomLevel) {
-  const metersPerPixel = 156543.03392 * Math.cos(0) / Math.pow(2, zoomLevel);
+  const metersPerPixel = (156543.03392 * Math.cos(0)) / Math.pow(2, zoomLevel);
   return pixelRadius * metersPerPixel;
 }
 const minLng = -83.8710725441986;

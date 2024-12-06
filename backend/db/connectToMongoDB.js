@@ -1,7 +1,10 @@
 const { MongoClient, ServerApiVersion } = require("mongodb");
 require("dotenv").config();
 
-const client = new MongoClient(process.env.MONGO_DB_URL, { useUnifiedTopology: true } );
+const client = new MongoClient(
+  "mongodb+srv://rathvasaurabhkumar:XKQWSx42sVooJKxT@mapcluster.jtbga.mongodb.net/?retryWrites=true&w=majority&appName=Mapcluste",
+  { useUnifiedTopology: true }
+);
 
 let db;
 
