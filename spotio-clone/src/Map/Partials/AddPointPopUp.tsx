@@ -28,7 +28,7 @@ const AddPointPopUp: FC<AddLeadPopUpProps> = ({
       <div className="w-full">
         <div className="flex justify-between w-full">
           <h3 className="text-base font-medium leading-6 text-black">
-            {"New Record"}
+            {title ||"New Record"}
           </h3>
           <button onClick={onClose}>
             <XMarkIcon className="w-6 h-6 text-latisGray-800" />
