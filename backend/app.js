@@ -12,7 +12,12 @@ const port = 3000;
 app.use(cors());
 app.use(express.json());
 let Supercluster;
-app.use(express.static(path.join(__dirname, 'spotio-clone/dist')));
+app.use(express.static(path.join(__dirname, '../spotio-clone/dist')));
+
+// Handle SPA
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, '../spotio-clone/dist', 'index.html'));
+// });
 (async () => {
   const module = await import("supercluster");
   Supercluster = module.default; // Ensure you're accessing the default export

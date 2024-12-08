@@ -6,7 +6,7 @@ interface AddLeadPopUpProps {
   content?: string;
   onClose: () => void;
   style?: CSSProperties;
-  setIsAddLeadFormPopUp: (value: boolean) => void;
+  setOpenSideBar: (value: boolean) => void;
   leadData?: {
     address?: string;
   };
@@ -17,7 +17,7 @@ const AddPointPopUp: FC<AddLeadPopUpProps> = ({
   content,
   onClose,
   style,
-  setIsAddLeadFormPopUp,
+  setOpenSideBar,
   leadData,
 }) => {
   return (
@@ -28,7 +28,7 @@ const AddPointPopUp: FC<AddLeadPopUpProps> = ({
       <div className="w-full">
         <div className="flex justify-between w-full">
           <h3 className="text-base font-medium leading-6 text-black">
-            {title || "New Records"}
+            {"New Record"}
           </h3>
           <button onClick={onClose}>
             <XMarkIcon className="w-6 h-6 text-latisGray-800" />
@@ -37,7 +37,7 @@ const AddPointPopUp: FC<AddLeadPopUpProps> = ({
         <div className="mt-4 space-y-4">
           <div className="gap-4 pb-3 border-b">
             <div className="text-sm leading-5 text-latisGray-800">
-              {leadData?.address || content || "No Address Available"}
+              {leadData?.address || content || "No Address Found"}
             </div>
           </div>
         </div>
@@ -46,12 +46,11 @@ const AddPointPopUp: FC<AddLeadPopUpProps> = ({
           <button
             onClick={(e) => {
               e.preventDefault();
-              onClose();
-              setIsAddLeadFormPopUp(true);
+              setOpenSideBar(true);
             }}
-            className="w-full"
+            className="w-full py-2 font-medium text-white bg-blue-500 rounded-md"
           >
-            Add Lead
+            Add New
           </button>
         </div>
       </div>

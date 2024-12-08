@@ -16,6 +16,8 @@ import axios from 'axios';
 // import useApi from '@/hooks/useApi';
 
 const SideBar = ({
+    setIsPointAdd,
+    isPointAdd,
     isPopUpOpen = false,
     setIsPopUpOpen = () => { },
     files = [],
@@ -92,10 +94,28 @@ const SideBar = ({
             [name]: value
         }))
     }
+
+    useEffect(()=>{
+       setData(pre=>({
+        ...pre,
+        longitude: popupCoordinates[0],
+        latitude:  popupCoordinates[1],
+       })) 
+    },[popupCoordinates])
     const handleSubmit = async (e) => {
         e.preventDefault();
         const response = await axios.post("http://localhost:3000/leads", data);
-        console.log(response);
+        if (response?.data?.message) {
+            setData({
+                address: "",
+                zipcode: '',
+                state: '',
+                country: '',
+                longitude: '',
+                latitude: '',
+                stageId: '',
+            })
+        }
     }
     return (
         <div
@@ -112,7 +132,7 @@ const SideBar = ({
             )}
 
             <Tab.Group
-                selectedIndex={selected}
+                selectedIndex={isPointAdd ? 0 : selected}
                 onChange={setSelected}
                 as="div"
                 className={classNames(
@@ -168,19 +188,20 @@ const SideBar = ({
                                 <div className=''
                                 >
                                     <label className="text-sm text-gray-900 capitalize ">
-                                        country
+                                        Longitude
                                     </label>
-                                    <input type='number' className='block w-full px-2 py-2 mt-2 text-sm text-gray-900 border rounded-lg' value={popupCoordinates[0]} onChange={(e) => setPopupCoordinates(pre => pre[0] = e.target.value)} />
+                                    <input type='number' className='block w-full px-2 py-2 mt-2 text-sm text-gray-900 border rounded-lg' value={data?.longitude} onChange={(e) => setPopupCoordinates(pre => {
+                                        return [parseFloat(e.target.value), pre[1]]
+                                    })} />
                                 </div>
                                 <div className=''
                                 >
                                     <label className="text-sm text-gray-900 capitalize ">
-                                        country
+                                        Latitude
                                     </label>
                                     <input
 
-                                        type='number' className='block w-full px-2 py-2 mt-2 text-sm text-gray-900 border rounded-lg' value={popupCoordinates[1]} onChange={(e) => setPopupCoordinates(pre => {
-                                            console.log(pre)
+                                        type='number' className='block w-full px-2 py-2 mt-2 text-sm text-gray-900 border rounded-lg' value={data?.latitude} onChange={(e) => setPopupCoordinates(pre => {
                                             return [pre[0], parseFloat(e.target.value)]
                                         })} />
                                 </div>
@@ -348,6 +369,7 @@ const SideBar = ({
                             setIsPopUpOpen(false);
                             setSelected(1);
                             setLeadData({});
+                            setIsPointAdd(false)
                         }}
                         className={({ selected }) =>
                             classNames(
@@ -363,7 +385,8 @@ const SideBar = ({
                             className="w-8 cursor-pointer h-7"
                         />
                     </Tab>
-                    {['Activity', 'Insights', 'File']?.map(tab => (
+
+                    {!isPointAdd && ['Activity', 'Insights', 'File']?.map(tab => (
                         <Tab
                             key={tab}
                             className={({ selected }) =>

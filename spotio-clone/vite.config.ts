@@ -24,9 +24,9 @@ export default defineConfig({
       transformMixedEsModules: true,
     },
   },
-  server: {
-    proxy: {
-        '/api': 'http://localhost:3000', // Example proxy setup
-    },
-},
+//   server: {
+//     proxy: {
+//         '/api': 'http://localhost:3000', // Example proxy setup
+//     },
+// },
 })

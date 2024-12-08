@@ -21,6 +21,7 @@ const Map = () => {
   const [isMapCreated, setIsMapCreated] = useState(false);
   const superclusterRef = useRef(null);
   const clusterLayer = useRef(null); // Explicitly typing as GraphicsLayer or null
+  const [isPointAdd, setIsPointAdd] = useState(false);
   const [openSideBar, setOpenSideBar] = useState(false);
   const [isAddPointPopup, setIsAddPointPopUp] = useState(false);
   const [mapCoordinates, setMapCoordinates] = useState({
@@ -111,12 +112,11 @@ const Map = () => {
           clusterLayer.current.removeAll();
           if (newCluster?.length > 0) {
             newCluster?.forEach((cluster) => {
-              console.log(cluster)
               const longitude = cluster?.center?.lon;
               const latitude = cluster?.center?.lat;
-              const isCluster = true;
+              const isCluster = cluster.count > 1;
               let size = 30;
-              let pointCount = isCluster ? cluster.count : 0;
+              let pointCount = isCluster ? cluster.count : 1;
               if (isCluster) {
                 size = Math.min(70, Math.max(30, pointCount * 0.5));
               }
@@ -168,6 +168,7 @@ const Map = () => {
                 id: cluster?.id,
                 text: cluster.count || 1,
                 cluster: isCluster,
+                attributes: cluster,
                 size: size,
               });
 
@@ -230,6 +231,13 @@ const Map = () => {
       },
     });
 
+    const googleTerrainLayer = new WebTileLayer({
+      urlTemplate:
+        'https://mts1.google.com/vt/lyrs=p&hl=en&x={col}&y={row}&z={level}&s=Galileo',
+      copyright: 'Google Maps',
+      opacity: 0.8,
+    });
+    mapView.map.add(googleTerrainLayer);
     const layer = new GraphicsLayer();
     clusterLayer.current = layer;
 
@@ -251,11 +259,11 @@ const Map = () => {
           left: `${screenPoint.x}px`,
           top: `${screenPoint.y}px`,
         });
+        setIsPointAdd(true)
         setPopupCoordinates([
           event?.mapPoint?.longitude,
           event?.mapPoint?.latitude,
         ]);
-        setOpenSideBar(true)
         if (graphic?.cluster) {
           const point = new Point({
             x: graphic?.coordinates[0],
@@ -371,8 +379,8 @@ const Map = () => {
       });
     }
   };
-  useEffect(() => {
 
+  useEffect(() => {
     if (!view) return;
     view.watch('extent', handleViewChange);
   }, [
@@ -381,9 +389,15 @@ const Map = () => {
     popupCoordinates
   ]);
 
+  useEffect(() => {
+
+    handleViewChange()
+  }, [popupCoordinates])
+
   return <div className="relative flex w-full h-full overflow-auto">
 
     {isAddPointPopup && <AddPointPopUp
+      setOpenSideBar={setOpenSideBar}
       onClose={() => {
         setIsAddPointPopUp(false)
       }}
@@ -401,7 +415,7 @@ const Map = () => {
       </div>}
 
     <div className="flex-1 overflow-hidden " ref={mapDiv} />
-    <SideBar setPopupCoordinates={setPopupCoordinates} mapCoordinates={mapCoordinates} popupCoordinates={popupCoordinates} isPopUpOpen={openSideBar} setIsPopUpOpen={setOpenSideBar} />
+    <SideBar isPointAdd={isPointAdd} setIsPointAdd={setIsPointAdd} setPopupCoordinates={setPopupCoordinates} mapCoordinates={mapCoordinates} popupCoordinates={popupCoordinates} isPopUpOpen={openSideBar} setIsPopUpOpen={setOpenSideBar} />
   </div>
 };
 
