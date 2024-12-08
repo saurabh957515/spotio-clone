@@ -1,1 +1,0 @@
-import{au as u,av as i,aw as a}from"./index-IeegpAPg.js";const c=96;function d(n,t){const r=n.extent,o=n.width,e=u(r?.spatialReference);return r&&o?r.width/o*e*i*c:0}function m(n,t){return n/(u(t)*i*c)}function w(n,t,r){return f(n,t)&&s(n,r)}function f(n,t){return t===0||a(n,t)||n<t}function s(n,t){return t===0||a(n,t)||n>t}export{w as d,d as i,m as o};

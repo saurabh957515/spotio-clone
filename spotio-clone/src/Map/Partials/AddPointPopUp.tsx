@@ -1,5 +1,5 @@
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import React, { CSSProperties, FC } from "react";
+import { CSSProperties, FC } from "react";
 
 interface AddLeadPopUpProps {
   title?: string;
