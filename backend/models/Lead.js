@@ -5,7 +5,7 @@ async function createGeoIndex() {
   await collection.createIndex({ geo: "2dsphere" });
 }
 
-// createGeoIndex().catch(console.error);
+createGeoIndex().catch(console.error);
 class Lead {
   constructor(data) {
     this.address = data.address || null;
@@ -15,7 +15,7 @@ class Lead {
     this.longitude = data.longitude || "-77.503209";
     this.latitude = data.latitude || "39.0211058";
     this.stageId = data.stageId || null;
-    this.location = this.createGeoPoint(); // Add GeoJSON Point
+    this.geo = this.createGeoPoint(); // Add GeoJSON Point
 
     if (!this.latitude || !this.longitude) {
       throw new Error("ID, latitude, and longitude are required fields.");

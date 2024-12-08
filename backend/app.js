@@ -30,7 +30,6 @@ app.get("/api/getby", async (req, res) => {
 });
 app.post("/leads", async (req, res) => {
   try {
-    console.log(req.body);
     const leadId = await Lead.create(req.body);
     res.status(201).json({ message: "Lead created", leadId });
   } catch (error) {
@@ -57,14 +56,13 @@ async function importData() {
     fs.createReadStream(filePath)
       .pipe(csv())
       .on("data", (row) => {
-        totalRowsProcessed++; // Validate the latitude and longitude before creating the geo object
+        totalRowsProcessed++;
         const longitude = parseFloat(row._15);
         const latitude = parseFloat(row._16);
 
-        // Skip invalid records where longitude or latitude is NaN
         if (isNaN(longitude) || isNaN(latitude)) {
           console.log(`Skipping invalid entry: ${JSON.stringify(row)}`);
-          return; // Skip this record
+          return;
         }
         const lead = {
           address: row._8 || null,
@@ -103,6 +101,8 @@ async function importData() {
     console.error("Error importing data:", error);
   }
 }
+let currentAbortController = null; // Track the latest AbortController
+
 async function getLeadsInBoundingBox(
   minLat,
   maxLat,
@@ -110,9 +110,95 @@ async function getLeadsInBoundingBox(
   maxLon,
   zoomLevel
 ) {
+  // Cancel the previous request if it exists
+  if (currentAbortController) {
+    currentAbortController.abort();
+  }
+
+  // Create a new AbortController for this request
+  currentAbortController = new AbortController();
+  const signal = currentAbortController.signal;
+
   try {
+    async function divideBoundingBoxAndAggregate(
+      collection,
+      minLat,
+      minLon,
+      maxLat,
+      maxLon,
+      signal
+    ) {
+      const divisions = 4;
+      const latStep = (parseFloat(maxLat) - parseFloat(minLat)) / divisions;
+      const lonStep = (parseFloat(maxLon) - parseFloat(minLon)) / divisions;
+      const results = [];
+
+      for (let i = 0; i < divisions; i++) {
+        for (let j = 0; j < divisions; j++) {
+          if (signal.aborted) {
+            throw new Error("Request was aborted");
+          }
+
+          const subMinLat = parseFloat(minLat) + i * parseFloat(latStep);
+          const subMaxLat = parseFloat(subMinLat) + parseFloat(latStep);
+          const subMinLon = parseFloat(minLon) + j * parseFloat(lonStep);
+          const subMaxLon = parseFloat(subMinLon) + parseFloat(lonStep);
+          const boundingBox = [
+            [parseFloat(subMinLon), parseFloat(subMinLat)], // Southwest corner
+            [parseFloat(subMaxLon), parseFloat(subMaxLat)], // Northeast corner
+          ];
+
+          const aggregationPipeline = [
+            {
+              $match: {
+                geo: {
+                  $geoWithin: {
+                    $box: boundingBox,
+                  },
+                },
+                "geo.coordinates": { $exists: true, $ne: null }, // Ensure coordinates exist
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                count: { $sum: 1 }, // Count the number of documents in the sub-box
+                centerLat: { $avg: { $arrayElemAt: ["$geo.coordinates", 1] } }, // Average latitude
+                centerLon: { $avg: { $arrayElemAt: ["$geo.coordinates", 0] } }, // Average longitude
+              },
+            },
+          ];
+
+          results.push(
+            collection
+              .aggregate(aggregationPipeline)
+              .toArray()
+              .then((result) => {
+                if (result.length > 0) {
+                  return {
+                    boundingBox,
+                    center: {
+                      lat: result[0].centerLat,
+                      lon: result[0].centerLon,
+                    },
+                    count: result[0].count,
+                  };
+                }
+                return null;
+              })
+          );
+          if (signal.aborted) {
+            throw new Error("Request was aborted");
+          }
+        }
+      }
+      const response = await Promise.all(results);
+      return response?.filter((res) => res);
+    }
+
     const db = await connectToMongoDB();
     const collection = db.collection("leads");
+
     const query = {
       geo: {
         $geoWithin: {
@@ -123,37 +209,22 @@ async function getLeadsInBoundingBox(
         },
       },
     };
-    const boundingBox = [
-      [parseFloat(minLon), parseFloat(minLat)], // Southwest corner
-      [parseFloat(maxLon), parseFloat(maxLat)], // Northeast corner
-    ];
 
-    // Aggregation pipeline
-    const aggregationPipeline = [
-      {
-        $match: {
-          geo: {
-            $geoWithin: {
-              $box: boundingBox,
-            },
-          },
-          "geo.coordinates": { $exists: true, $ne: null }, // Ensure coordinates exist
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          count: { $sum: 1 }, 
-          centerLat: { $avg: { $arrayElemAt: ["$geo.coordinates", 1] } }, 
-          centerLon: { $avg: { $arrayElemAt: ["$geo.coordinates", 0] } }, 
-        },
-      },
-    ];
-    const result = await collection.aggregate(aggregationPipeline).toArray();
-    console.log(result);
+    const result = await divideBoundingBoxAndAggregate(
+      collection,
+      minLat,
+      minLon,
+      maxLat,
+      maxLon,
+      signal
+    );
     return result;
   } catch (err) {
-    console.error("Error retrieving leads within bounding box:", err);
+    if (err.message === "Request was aborted") {
+      console.warn("Request was canceled:", err);
+    } else {
+      console.error("Error retrieving leads within bounding box:", err);
+    }
   }
 }
 

@@ -8,9 +8,11 @@ import Graphic from "@arcgis/core/Graphic.js";
 import debounce from "lodash.debounce";
 import ReactDOMServer from 'react-dom/server';
 import { loadModules } from 'esri-loader';
-import SideBar from "./Partials/SideBar";
+import SideBar, { classNames } from "./Partials/SideBar";
 import { Bars3Icon } from "@heroicons/react/24/outline";
 import axios from 'axios'
+
+import Point from '@arcgis/core/geometry/Point.js';
 // Rename component to avoid conflict with ArcGIS `Map` class
 const Map = () => {
   const mapDiv = useRef(null); // Use `useRef` for DOM element
@@ -18,7 +20,11 @@ const Map = () => {
   const [isMapCreated, setIsMapCreated] = useState(false);
   const superclusterRef = useRef(null);
   const clusterLayer = useRef(null); // Explicitly typing as GraphicsLayer or null
-  const [openSideBar, setOpenSideBar] = useState(true)
+  const [openSideBar, setOpenSideBar] = useState(false);
+  const [mapCoordinates, setMapCoordinates] = useState({
+    latitude: "",
+    longitude: "",
+  })
 
   const SingleOneMarker = ({ className, fillColor }) => <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -93,15 +99,15 @@ const Map = () => {
           },
           signal: controller.signal  // Attach the signal here
         });
-        
+
         if (!errors) {
           const newCluster = data;
           clusterLayer.current.removeAll();
           if (newCluster?.length > 0) {
             newCluster?.forEach((cluster) => {
               console.log(cluster)
-              const longitude=cluster?.centerLon;
-              const latitude=cluster?.centerLat;
+              const longitude = cluster?.center?.lon;
+              const latitude = cluster?.center?.lat;
               const isCluster = true;
               let size = 30;
               let pointCount = isCluster ? cluster.count : 0;
@@ -112,7 +118,7 @@ const Map = () => {
               const pinIconSvgString = ReactDOMServer.renderToStaticMarkup(
                 <SingleOneMarker
                   fillColor={
-                   "black"
+                    "black"
                   }
                   className="w-6 h-6 text-blue-500 "
                 />
@@ -203,19 +209,13 @@ const Map = () => {
     const mapView = new MapView({
       container: mapDiv.current,
       map: new ArcGISMap({
-        layers: [
-          new WebTileLayer({
-            urlTemplate:
-              "https://mts1.google.com/vt/lyrs=p&hl=en&x={col}&y={row}&z={level}&s=Galileo",
-            copyright: "Google Maps",
-            opacity: 0.8,
-          }),
-        ],
+        basemap:
+          "streets-navigation-vector"
       }),
-      zoom: 3,
+      zoom: 2,
       center: [-84.006, 40.7128], // Set the initial map center coordinates
       constraints: {
-        minZoom: 3,
+        minZoom: 2,
         maxZoom: 20,
         rotationEnabled: false,
       },
@@ -226,6 +226,31 @@ const Map = () => {
 
     const layer = new GraphicsLayer();
     clusterLayer.current = layer;
+
+    mapView.on('click', event => {
+      mapView.hitTest(event).then(response => {
+        const graphic = response.results[0]?.graphic;
+        setMapCoordinates({
+          latitude: event?.mapPoint?.latitude,
+          longitude: event?.mapPoint?.longitude,
+        })
+        setOpenSideBar(true)
+        if (graphic?.cluster) {
+          const point = new Point({
+            x: graphic?.coordinates[0],
+            y: graphic?.coordinates[1],
+            spatialReference: { wkid: 4326 },
+          });
+        } else if (graphic?.text === 1) {
+          console.log(graphic?.coordinates[0])
+
+        }
+      });
+    });
+
+
+
+
     mapView.map.add(layer, 5);
     loadModules([
       'esri/geometry/SpatialReference',
@@ -314,7 +339,7 @@ const Map = () => {
 
   }, [view]);
 
-  return <>
+  return <div className="relative flex w-full h-full overflow-auto">
     {!openSideBar &&
       <div
         onClick={() => {
@@ -324,9 +349,10 @@ const Map = () => {
       >
         <Bars3Icon className="w-6 h-6 text-latisGray-900 hover:text-latisSecondary-900" />
       </div>}
-    <SideBar open={openSideBar} setOpen={setOpenSideBar} />
-    <div ref={mapDiv} className="h-full rounded-l-lg" />
-  </>
+
+    <div className="flex-1 overflow-hidden " ref={mapDiv} />
+    <SideBar mapCoordinates={mapCoordinates} isPopUpOpen={openSideBar} setIsPopUpOpen={setOpenSideBar} />
+  </div>
 };
 
 export default Map;
