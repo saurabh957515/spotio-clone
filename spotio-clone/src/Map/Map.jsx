@@ -11,8 +11,9 @@ import { loadModules } from 'esri-loader';
 import SideBar, { classNames } from "./Partials/SideBar";
 import { Bars3Icon } from "@heroicons/react/24/outline";
 import axios from 'axios'
-
+import AddPointPopUp from './Partials/AddPointPopUp'
 import Point from '@arcgis/core/geometry/Point.js';
+// import './map.css';
 // Rename component to avoid conflict with ArcGIS `Map` class
 const Map = () => {
   const mapDiv = useRef(null); // Use `useRef` for DOM element
@@ -21,11 +22,16 @@ const Map = () => {
   const superclusterRef = useRef(null);
   const clusterLayer = useRef(null); // Explicitly typing as GraphicsLayer or null
   const [openSideBar, setOpenSideBar] = useState(false);
+  const [isAddPointPopup, setIsAddPointPopUp] = useState(false);
   const [mapCoordinates, setMapCoordinates] = useState({
     latitude: "",
     longitude: "",
   })
-
+  const [popupCoordinates, setPopupCoordinates] = useState({})
+  const [popupPosition, setPopupPosition] = useState({
+    left: '0px',
+    top: '0px',
+  });
   const SingleOneMarker = ({ className, fillColor }) => <svg
     xmlns="http://www.w3.org/2000/svg"
     width="40"
@@ -230,10 +236,25 @@ const Map = () => {
     mapView.on('click', event => {
       mapView.hitTest(event).then(response => {
         const graphic = response.results[0]?.graphic;
+        setIsAddPointPopUp(true);
         setMapCoordinates({
           latitude: event?.mapPoint?.latitude,
           longitude: event?.mapPoint?.longitude,
         })
+        const point = new Point({
+          x: event?.mapPoint?.longitude,
+          y: event?.mapPoint?.latitude,
+          spatialReference: { wkid: 4326 },
+        });
+        const screenPoint = mapView.toScreen(point);
+        setPopupPosition({
+          left: `${screenPoint.x}px`,
+          top: `${screenPoint.y}px`,
+        });
+        setPopupCoordinates([
+          event?.mapPoint?.longitude,
+          event?.mapPoint?.latitude,
+        ]);
         setOpenSideBar(true)
         if (graphic?.cluster) {
           const point = new Point({
@@ -335,11 +356,40 @@ const Map = () => {
       }
     };
   }, []);
+
+  const handleViewChange = () => {
+    if (isAddPointPopup) {
+      const point = new Point({
+        x: popupCoordinates[0],
+        y: popupCoordinates[1],
+        spatialReference: { wkid: 4326 },
+      });
+      const screenPoint = view.toScreen(point);
+      setPopupPosition({
+        left: `${screenPoint.x}px`,
+        top: `${screenPoint.y}px`,
+      });
+    }
+  };
   useEffect(() => {
 
-  }, [view]);
+    if (!view) return;
+    view.watch('extent', handleViewChange);
+  }, [
+    view,
+    isAddPointPopup,
+    popupCoordinates
+  ]);
 
   return <div className="relative flex w-full h-full overflow-auto">
+
+    {isAddPointPopup && <AddPointPopUp
+      onClose={() => {
+        setIsAddPointPopUp(false)
+      }}
+      style={{ position: 'absolute', ...popupPosition }}
+    />}
+
     {!openSideBar &&
       <div
         onClick={() => {
@@ -351,7 +401,7 @@ const Map = () => {
       </div>}
 
     <div className="flex-1 overflow-hidden " ref={mapDiv} />
-    <SideBar mapCoordinates={mapCoordinates} isPopUpOpen={openSideBar} setIsPopUpOpen={setOpenSideBar} />
+    <SideBar setPopupCoordinates={setPopupCoordinates} mapCoordinates={mapCoordinates} popupCoordinates={popupCoordinates} isPopUpOpen={openSideBar} setIsPopUpOpen={setOpenSideBar} />
   </div>
 };
 

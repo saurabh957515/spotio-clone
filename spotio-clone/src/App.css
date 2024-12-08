@@ -1,0 +1,12 @@
+
+.arrow-down {
+    position: absolute;
+    bottom: -10px; /* Position the arrow right below the popup */
+    left: 80%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid white; /* Arrow color matches popup background */
+  }
