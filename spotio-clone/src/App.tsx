@@ -1,6 +1,6 @@
 import "./App.css";
 import GlobalSidebar from "./Components/GlobalSidebar.tsx";
-import Map from "./Map/Map.jsx";
+import Map from "./Map/Map.tsx";
 
 function App() {
 
