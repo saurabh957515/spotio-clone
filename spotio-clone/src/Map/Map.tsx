@@ -8,11 +8,11 @@ import Graphic from "@arcgis/core/Graphic.js";
 import debounce from "lodash.debounce";
 import ReactDOMServer from "react-dom/server";
 import { loadModules } from "esri-loader";
-import SideBar from "./Partials/SideBar";
 import { Bars3Icon } from "@heroicons/react/24/outline";
 import axios from "axios";
 import AddPointPopUp from "./Partials/AddPointPopUp";
 import Point from "@arcgis/core/geometry/Point.js";
+import SideBar from "./Partials/SideBar";
 // import './map.css';
 // Rename component to avoid conflict with ArcGIS `Map` class
 const Map = () => {
@@ -22,7 +22,7 @@ const Map = () => {
     count: number;
   };
   const mapDiv = useRef(null); // Use `useRef` for DOM element
-  const [view, setView] = useState(null); // View state for the map
+  const [view, setView] = useState<MapView | null>(null); // View state for the map
   const [isMapCreated, setIsMapCreated] = useState(false);
   const superclusterRef = useRef<Supercluster | null>(null);
   const clusterLayer = useRef<GraphicsLayer | null>(null); // Explicitly typing as GraphicsLayer or null
@@ -30,10 +30,12 @@ const Map = () => {
   const [openSideBar, setOpenSideBar] = useState(false);
   const [isAddPointPopup, setIsAddPointPopUp] = useState(false);
   const [mapCoordinates, setMapCoordinates] = useState({
-    latitude: "",
-    longitude: "",
+    latitude: 0,
+    longitude: 0,
   });
-  const [popupCoordinates, setPopupCoordinates] = useState([]);
+  const [popupCoordinates, setPopupCoordinates] = useState<
+    [number, number] | null
+  >(null);
   const [popupPosition, setPopupPosition] = useState({
     left: "0px",
     top: "0px",
@@ -189,7 +191,7 @@ const Map = () => {
                     type: "point",
                     longitude,
                     latitude,
-                  },
+                  } as __esri.Point,
                   symbol,
                   text: cluster.count || 1,
                   cluster: isCluster,
@@ -205,7 +207,7 @@ const Map = () => {
                       type: "point",
                       longitude,
                       latitude,
-                    },
+                    } as __esri.Point,
                     symbol: {
                       type: "text",
                       color: "white",
@@ -220,8 +222,6 @@ const Map = () => {
                         weight: "bold",
                       },
                     },
-                    cluster_id: cluster?.id,
-                    id: cluster?.id,
                     text: cluster.count || 1,
                     cluster: isCluster,
                     size: size,
@@ -350,7 +350,6 @@ const Map = () => {
       .catch((err) => {
         console.error("Error loading ArcGIS modules: ", err);
       });
-    addClustersToMap();
     let isZooming = false;
     mapView.on("mouse-wheel", (event) => {
       event.stopPropagation();
@@ -388,7 +387,7 @@ const Map = () => {
     if (!view) {
       return;
     }
-    if (isAddPointPopup) {
+    if (isAddPointPopup && popupCoordinates) {
       const point = new Point({
         x: popupCoordinates[0],
         y: popupCoordinates[1],
