@@ -1,32 +1,31 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
-    include: ['tailwind.config.js'],
+    include: ["tailwind.config.js"],
     esbuildOptions: {
-      target: 'esnext',
+      target: "esnext",
       define: {
-        global: 'globalThis',
+        global: "globalThis",
       },
       supported: {
         bigint: true,
       },
     },
- 
   },
   build: {
-    target: 'esnext', //
+    target: "esnext", //
     commonjsOptions: {
-      include: ['tailwind.config.js', 'node_modules/**'],
+      include: ["tailwind.config.js", "node_modules/**"],
       transformMixedEsModules: true,
     },
   },
-  server: {
-    proxy: {
-        '/api': 'http://localhost:3000', // Example proxy setup
-    },
-},
-})
+  //   server: {
+  //     proxy: {
+  //         '/api': 'http://localhost:3000', // Example proxy setup
+  //     },
+  // },
+});
