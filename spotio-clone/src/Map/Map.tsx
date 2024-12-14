@@ -12,7 +12,7 @@ import { Bars3Icon } from "@heroicons/react/24/outline";
 import axios from "axios";
 import AddPointPopUp from "./Partials/AddPointPopUp";
 import Point from "@arcgis/core/geometry/Point.js";
-// import SideBar from "./Partials/SideBar";
+import SideBar from "./Partials/SideBar";
 
 const Map = () => {
   type Cluster = {
@@ -423,14 +423,14 @@ const Map = () => {
       )}
 
       <div className="flex-1 overflow-hidden " ref={mapDiv} />
-      {/* <SideBar
+      <SideBar
         isPointAdd={isPointAdd}
         setIsPointAdd={setIsPointAdd}
         setPopupCoordinates={setPopupCoordinates}
         popupCoordinates={popupCoordinates}
         isPopUpOpen={openSideBar}
         setIsPopUpOpen={setOpenSideBar}
-      /> */}
+      />
     </div>
   );
 };
