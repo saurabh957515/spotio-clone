@@ -2,13 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import MapView from "@arcgis/core/views/MapView";
 import ArcGISMap from "@arcgis/core/Map";
 import Supercluster from "supercluster";
-import WebTileLayer from "@arcgis/core/layers/WebTileLayer.js";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer.js";
 import Graphic from "@arcgis/core/Graphic.js";
 import debounce from "lodash.debounce";
 import ReactDOMServer from "react-dom/server";
 import { loadModules } from "esri-loader";
-import { Bars3Icon } from "@heroicons/react/24/outline";
+import { Bars3Icon, GlobeAltIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
 import AddPointPopUp from "./Partials/AddPointPopUp";
 import Point from "@arcgis/core/geometry/Point.js";
@@ -17,6 +16,7 @@ import SingleOneMarker from "../Icons/SingleOneMarker";
 import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol.js";
 import PictureMarkerSymbol from "@arcgis/core/symbols/PictureMarkerSymbol";
 import TextSymbol from "@arcgis/core/symbols/TextSymbol";
+import WebTileLayer from "@arcgis/core/layers/WebTileLayer";
 const Map = () => {
   type Cluster = {
     boundingBox: [[number, number], [number, number]];
@@ -27,9 +27,12 @@ const Map = () => {
   const mapDiv = useRef(null);
   const [view, setView] = useState<MapView | null>(null);
   const superclusterRef = useRef<Supercluster | null>(null);
+  const satelliteLayerRef = useRef<WebTileLayer | null>(null);
+  const labelLayerRef = useRef<WebTileLayer | null>(null);
   const clusterLayer = useRef<GraphicsLayer | null>(null);
   const [isPointAdd, setIsPointAdd] = useState(false);
   const [openSideBar, setOpenSideBar] = useState(false);
+  const [isSatellite, setIsSateLite] = useState(false);
   const [isAddPointPopup, setIsAddPointPopUp] = useState(false);
   const [popupCoordinates, setPopupCoordinates] =
     useState<PopupCoordinates>(null);
@@ -198,36 +201,45 @@ const Map = () => {
     const layer = new GraphicsLayer();
     clusterLayer.current = layer;
 
-    // mapView.on("click", (event) => {
-    //   mapView.hitTest(event).then((response) => {
-    // const graphic = response.results[0]?.graphic;
-    // setIsAddPointPopUp(true);
-    // const point = new Point({
-    //   x: event?.mapPoint?.longitude,
-    //   y: event?.mapPoint?.latitude,
-    //   spatialReference: { wkid: 4326 },
-    // });
-    // const screenPoint = mapView.toScreen(point);
-    // setPopupPosition({
-    //   left: `${screenPoint.x}px`,
-    //   top: `${screenPoint.y}px`,
-    // });
-    // setIsPointAdd(true);
-    // setPopupCoordinates([
-    //   event?.mapPoint?.longitude,
-    //   event?.mapPoint?.latitude,
-    // ]);
-    // if (graphic?.cluster) {
-    //   const point = new Point({
-    //     x: graphic?.coordinates[0],
-    //     y: graphic?.coordinates[1],
-    //     spatialReference: { wkid: 4326 },
-    //   });
-    // } else if (graphic?.text === 1) {
-    //   console.log(graphic?.coordinates[0]);
-    // }
-    //   });
-    // });
+    mapView.on("click", (event) => {
+      mapView.hitTest(event).then((response) => {
+        const result = response.results.find(
+          (res) => "graphic" in res
+        ) as __esri.GraphicHit;
+
+        if (result?.graphic) {
+          const graphic = result.graphic;
+
+          if (graphic.attributes?.cluster) {
+            // const point = new Point({
+            //   x: graphic.attributes?.coordinates[0],
+            //   y: graphic.attributes?.coordinates[1],
+            //   spatialReference: { wkid: 4326 },
+            // });
+          } else if (graphic.attributes?.text === 1) {
+            console.log(graphic.attributes?.coordinates[0]);
+          } else {
+            setOpenSideBar(true);
+          }
+        }
+        setIsAddPointPopUp(true);
+        const point = new Point({
+          x: event?.mapPoint?.longitude,
+          y: event?.mapPoint?.latitude,
+          spatialReference: { wkid: 4326 },
+        });
+        const screenPoint = mapView.toScreen(point);
+        setPopupPosition({
+          left: `${screenPoint.x}px`,
+          top: `${screenPoint.y}px`,
+        });
+        setIsPointAdd(true);
+        setPopupCoordinates([
+          event?.mapPoint?.longitude,
+          event?.mapPoint?.latitude,
+        ]);
+      });
+    });
 
     mapView.map.add(layer, 5);
     loadModules([
@@ -334,6 +346,39 @@ const Map = () => {
     handleViewChange();
   }, [popupCoordinates]);
 
+  useEffect(() => {
+    if (!view) {
+      return;
+    }
+    if (isSatellite && view) {
+      if (!satelliteLayerRef.current) {
+        const googleSatellite = new WebTileLayer({
+          urlTemplate:
+            "https://mts1.google.com/vt/lyrs=s&hl=en&x={col}&y={row}&z={level}&s=Galileo",
+          copyright: "Google Maps",
+        });
+        const googleLabels = new WebTileLayer({
+          urlTemplate:
+            "https://mts1.google.com/vt/lyrs=h&hl=en&x={col}&y={row}&z={level}&s=Galileo",
+          opacity: 1,
+          copyright: "Google Maps",
+        });
+        view.map.add(googleSatellite, view?.map?.layers?.length -1);
+        view.map.add(googleLabels, view?.map?.layers?.length-1);
+        satelliteLayerRef.current = googleSatellite;
+        labelLayerRef.current = googleLabels;
+      }
+    } else {
+      if (satelliteLayerRef.current) {
+        view.map.remove(satelliteLayerRef.current);
+        satelliteLayerRef.current = null;
+      }
+      if (labelLayerRef.current) {
+        view.map.remove(labelLayerRef.current);
+        labelLayerRef.current = null;
+      }
+    }
+  }, [isSatellite]);
   return (
     <div className="relative flex w-full h-full overflow-auto">
       {isAddPointPopup && (
@@ -345,7 +390,14 @@ const Map = () => {
           style={{ position: "absolute", ...popupPosition }}
         />
       )}
-
+      <div
+        onClick={() => setIsSateLite((pre) => !pre)}
+        className={
+          "absolute left-3  top-4 z-50 cursor-pointer rounded-full p-2 bg-white"
+        }
+      >
+        <GlobeAltIcon className="w-6 h-6 text-latisGray-900 hover:text-latisSecondary-900" />
+      </div>
       {!openSideBar && (
         <div
           onClick={() => {

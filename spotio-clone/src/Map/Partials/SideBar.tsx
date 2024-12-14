@@ -28,8 +28,8 @@ type PopupCoordinates = [number, number] | null;
 interface SideBarProps {
   setIsPointAdd: React.Dispatch<React.SetStateAction<boolean>>;
   isPointAdd: boolean;
-  isPopUpOpen?: boolean;
-  setIsPopUpOpen?: (value: boolean) => void;
+  isPopUpOpen: boolean;
+  setIsPopUpOpen: React.Dispatch<React.SetStateAction<boolean>>;
   leadData?: LeadData;
   dataLoading?: boolean;
   setLeadData?: (data: LeadData) => void;
@@ -44,6 +44,7 @@ const SideBar: React.FC<SideBarProps> = ({
   dataLoading = false,
   popupCoordinates,
   setPopupCoordinates,
+  setIsPopUpOpen,
 }) => {
   const [selected, setSelected] = useState<number>(4);
 
@@ -103,6 +104,9 @@ const SideBar: React.FC<SideBarProps> = ({
         stageId: "",
       });
     }
+  };
+  const onClose = () => {
+    setIsPopUpOpen(false);
   };
 
   return (
@@ -283,6 +287,7 @@ const SideBar: React.FC<SideBarProps> = ({
 
         <Tab.List className="flex flex-col flex-wrap items-center h-full gap-4 p-4 bg-gray-200">
           <Tab
+            onClick={onClose}
             className={
               " p-4 text-sm flex flex-col items-center text-gray-500 hover:text-gray-900 bg-gray-100 rounded-md"
             }
