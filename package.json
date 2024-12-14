@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-       "start": "cd spotio-clone && npm run build && cd ../backend && npm start"
+    "server": "cd backend && node -r dotenv/config app.js",
+    "start": "cd spotio-clone && npm run build"
   },
   "repository": {
     "type": "git",
