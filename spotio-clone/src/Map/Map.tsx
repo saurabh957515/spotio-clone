@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import MapView from "@arcgis/core/views/MapView";
 import ArcGISMap from "@arcgis/core/Map";
 import Supercluster from "supercluster";
@@ -13,7 +13,10 @@ import axios from "axios";
 import AddPointPopUp from "./Partials/AddPointPopUp";
 import Point from "@arcgis/core/geometry/Point.js";
 import SideBar from "./Partials/SideBar";
-
+import SingleOneMarker from "../Icons/SingleOneMarker";
+import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol.js";
+import PictureMarkerSymbol from "@arcgis/core/symbols/PictureMarkerSymbol";
+import TextSymbol from "@arcgis/core/symbols/TextSymbol";
 const Map = () => {
   type Cluster = {
     boundingBox: [[number, number], [number, number]];
@@ -34,59 +37,6 @@ const Map = () => {
     left: "0px",
     top: "0px",
   });
-  interface SingleOneMarkerProps {
-    className?: string;
-    fillColor: string;
-  }
-  const SingleOneMarker: React.FC<SingleOneMarkerProps> = ({
-    className,
-    fillColor,
-  }) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="40"
-      height="40"
-      viewBox="0 0 40 40"
-      fill="none"
-      className={className}
-    >
-      <defs>
-        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-          <feMerge>
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-
-      <g filter="url(#glow)">
-        <path
-          fillRule="evenodd"
-          clipRule="evenodd"
-          d="M20 28C26.6274 28 32 22.6274 32 16C32 9.37258 26.6274 4 20 4C13.3726 4 8 9.37258 8 16V28H20Z"
-          fill="white"
-        />
-        <path
-          d="M31.5 16C31.5 22.3513 26.3513 27.5 20 27.5H8.5V16C8.5 9.64873 13.6487 4.5 20 4.5C26.3513 4.5 31.5 9.64873 31.5 16Z"
-          stroke="#EFEEED"
-        />
-      </g>
-
-      <svg
-        x="12"
-        y="7"
-        xmlns="http://www.w3.org/2000/svg"
-        width="16"
-        height="18"
-        viewBox="0 0 16 18"
-        fill="none"
-      >
-        <circle cx="8" cy="9" r="8" fill={fillColor} />
-        <path d="M6.156 5.56V4.54H8.58V13H7.428V5.56H6.156Z" fill="white" />
-      </svg>
-    </svg>
-  );
 
   useEffect(() => {
     superclusterRef.current = new Supercluster({
@@ -95,12 +45,12 @@ const Map = () => {
       minZoom: 0,
     });
     const features: Array<GeoJSON.Feature<GeoJSON.Geometry>> = [];
-    superclusterRef.current.load(features); // Load features into Supercluster
+    superclusterRef.current.load(features);
   }, []);
   let controller: AbortController | undefined;
   interface ApiResponse {
-    data: any; // Define the type of the data as needed
-    errors?: string[]; // Define errors as an optional field
+    data: any;
+    errors?: string[];
   }
   const addClustersToMap = useRef(
     debounce(
@@ -116,7 +66,6 @@ const Map = () => {
           controller.abort();
         }
 
-        // Create a new AbortController for the new request
         controller = new AbortController();
 
         try {
@@ -128,7 +77,7 @@ const Map = () => {
               maxLon,
               zoomLevel,
             },
-            signal: controller.signal, // Attach the signal here
+            signal: controller.signal,
           });
 
           if (!errors) {
@@ -155,30 +104,23 @@ const Map = () => {
                 );
                 const encodedPinIconSvg = encodeURIComponent(pinIconSvgString);
                 const symbol = isCluster
-                  ? {
+                  ? new SimpleMarkerSymbol({
                       type: "simple-marker",
                       style: "circle",
-                      text: cluster.count.toString(),
-                      label: pointCount.toString(),
                       color: true ? "#1F2836" : "#5789D7",
                       size: `${size}px`,
                       outline: {
                         color: "white",
                         width: 1.25,
                       },
-                      font: {
-                        size: "12px",
-                        family: "sans-serif",
-                        weight: "bold",
-                      },
-                    }
-                  : {
+                    })
+                  : new PictureMarkerSymbol({
                       type: "picture-marker",
                       url:
                         "data:image/svg+xml;charset=UTF-8," + encodedPinIconSvg,
                       width: "40px",
                       height: "40px",
-                    };
+                    });
 
                 const graphic = new Graphic({
                   geometry: {
@@ -188,40 +130,35 @@ const Map = () => {
                   } as __esri.Point,
                   symbol,
                   attributes: cluster,
-                  // size: size,
                 });
                 if (clusterLayer.current) {
                   clusterLayer.current.add(graphic);
                 }
-                // if (isCluster) {
-                //   const labelGraphic = new Graphic({
-                //     geometry: {
-                //       type: "point",
-                //       longitude,
-                //       latitude,
-                //     } as __esri.Point,
-                //     symbol: {
-                //       type: "text",
-                //       color: "white",
-                //       haloColor: "black",
-                //       haloSize: "1px",
-                //       text: cluster.count.toString(),
-                //       xoffset: 0,
-                //       yoffset: 0,
-                //       font: {
-                //         size: "12px",
-                //         family: "sans-serif",
-                //         weight: "bold",
-                //       },
-                //     },
-                //     text: cluster.count || 1,
-                //     cluster: isCluster,
-                //     size: size,
-                //   });
-                //   if (clusterLayer.current) {
-                //     clusterLayer.current.add(labelGraphic);
-                //   }
-                // }
+                if (isCluster) {
+                  const labelGraphic = new Graphic({
+                    geometry: {
+                      type: "point",
+                      longitude,
+                      latitude,
+                    } as __esri.Point,
+                    symbol: new TextSymbol({
+                      color: "white",
+                      haloColor: "black",
+                      haloSize: "1px",
+                      text: cluster.count.toString(),
+                      xoffset: 0,
+                      yoffset: 0,
+                      font: {
+                        size: "12px",
+                        family: "sans-serif",
+                        weight: "bold",
+                      },
+                    }),
+                  });
+                  if (clusterLayer.current) {
+                    clusterLayer.current.add(labelGraphic);
+                  }
+                }
               });
             }
           }
@@ -233,21 +170,21 @@ const Map = () => {
     )
   ).current;
   useEffect(() => {
-    if (!mapDiv.current) return; // Ensure ref is available
+    if (!mapDiv.current) return;
     const mapView = new MapView({
       container: mapDiv.current,
       map: new ArcGISMap({
         basemap: "streets-navigation-vector",
       }),
       zoom: 2,
-      center: [-84.006, 40.7128], // Set the initial map center coordinates
+      center: [-84.006, 40.7128],
       constraints: {
         minZoom: 2,
         maxZoom: 20,
         rotationEnabled: false,
       },
       ui: {
-        components: [], // Remove the default UI components (optional)
+        components: [],
       },
     });
 
@@ -263,32 +200,32 @@ const Map = () => {
 
     // mapView.on("click", (event) => {
     //   mapView.hitTest(event).then((response) => {
-        // const graphic = response.results[0]?.graphic;
-        // setIsAddPointPopUp(true);
-        // const point = new Point({
-        //   x: event?.mapPoint?.longitude,
-        //   y: event?.mapPoint?.latitude,
-        //   spatialReference: { wkid: 4326 },
-        // });
-        // const screenPoint = mapView.toScreen(point);
-        // setPopupPosition({
-        //   left: `${screenPoint.x}px`,
-        //   top: `${screenPoint.y}px`,
-        // });
-        // setIsPointAdd(true);
-        // setPopupCoordinates([
-        //   event?.mapPoint?.longitude,
-        //   event?.mapPoint?.latitude,
-        // ]);
-        // if (graphic?.cluster) {
-        //   const point = new Point({
-        //     x: graphic?.coordinates[0],
-        //     y: graphic?.coordinates[1],
-        //     spatialReference: { wkid: 4326 },
-        //   });
-        // } else if (graphic?.text === 1) {
-        //   console.log(graphic?.coordinates[0]);
-        // }
+    // const graphic = response.results[0]?.graphic;
+    // setIsAddPointPopUp(true);
+    // const point = new Point({
+    //   x: event?.mapPoint?.longitude,
+    //   y: event?.mapPoint?.latitude,
+    //   spatialReference: { wkid: 4326 },
+    // });
+    // const screenPoint = mapView.toScreen(point);
+    // setPopupPosition({
+    //   left: `${screenPoint.x}px`,
+    //   top: `${screenPoint.y}px`,
+    // });
+    // setIsPointAdd(true);
+    // setPopupCoordinates([
+    //   event?.mapPoint?.longitude,
+    //   event?.mapPoint?.latitude,
+    // ]);
+    // if (graphic?.cluster) {
+    //   const point = new Point({
+    //     x: graphic?.coordinates[0],
+    //     y: graphic?.coordinates[1],
+    //     spatialReference: { wkid: 4326 },
+    //   });
+    // } else if (graphic?.text === 1) {
+    //   console.log(graphic?.coordinates[0]);
+    // }
     //   });
     // });
 
