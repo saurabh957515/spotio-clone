@@ -13,36 +13,30 @@ import axios from "axios";
 import AddPointPopUp from "./Partials/AddPointPopUp";
 import Point from "@arcgis/core/geometry/Point.js";
 import SideBar from "./Partials/SideBar";
-// import './map.css';
-// Rename component to avoid conflict with ArcGIS `Map` class
+
 const Map = () => {
   type Cluster = {
     boundingBox: [[number, number], [number, number]];
     center: { lat: number; lon: number };
     count: number;
   };
-  const mapDiv = useRef(null); // Use `useRef` for DOM element
-  const [view, setView] = useState<MapView | null>(null); // View state for the map
-  const [isMapCreated, setIsMapCreated] = useState(false);
+  type PopupCoordinates = [number, number] | null;
+  const mapDiv = useRef(null);
+  const [view, setView] = useState<MapView | null>(null);
   const superclusterRef = useRef<Supercluster | null>(null);
-  const clusterLayer = useRef<GraphicsLayer | null>(null); // Explicitly typing as GraphicsLayer or null
+  const clusterLayer = useRef<GraphicsLayer | null>(null);
   const [isPointAdd, setIsPointAdd] = useState(false);
   const [openSideBar, setOpenSideBar] = useState(false);
   const [isAddPointPopup, setIsAddPointPopUp] = useState(false);
-  const [mapCoordinates, setMapCoordinates] = useState({
-    latitude: 0,
-    longitude: 0,
-  });
-  const [popupCoordinates, setPopupCoordinates] = useState<
-    [number, number] | null
-  >(null);
+  const [popupCoordinates, setPopupCoordinates] =
+    useState<PopupCoordinates>(null);
   const [popupPosition, setPopupPosition] = useState({
     left: "0px",
     top: "0px",
   });
   interface SingleOneMarkerProps {
-    className?: string; // Optional string type for className
-    fillColor: string; // String type for fillColor
+    className?: string;
+    fillColor: string;
   }
   const SingleOneMarker: React.FC<SingleOneMarkerProps> = ({
     className,
@@ -193,43 +187,41 @@ const Map = () => {
                     latitude,
                   } as __esri.Point,
                   symbol,
-                  text: cluster.count || 1,
-                  cluster: isCluster,
                   attributes: cluster,
-                  size: size,
+                  // size: size,
                 });
                 if (clusterLayer.current) {
                   clusterLayer.current.add(graphic);
                 }
-                if (isCluster) {
-                  const labelGraphic = new Graphic({
-                    geometry: {
-                      type: "point",
-                      longitude,
-                      latitude,
-                    } as __esri.Point,
-                    symbol: {
-                      type: "text",
-                      color: "white",
-                      haloColor: "black",
-                      haloSize: "1px",
-                      text: cluster.count.toString(),
-                      xoffset: 0,
-                      yoffset: 0,
-                      font: {
-                        size: "12px",
-                        family: "sans-serif",
-                        weight: "bold",
-                      },
-                    },
-                    text: cluster.count || 1,
-                    cluster: isCluster,
-                    size: size,
-                  });
-                  if (clusterLayer.current) {
-                    clusterLayer.current.add(labelGraphic);
-                  }
-                }
+                // if (isCluster) {
+                //   const labelGraphic = new Graphic({
+                //     geometry: {
+                //       type: "point",
+                //       longitude,
+                //       latitude,
+                //     } as __esri.Point,
+                //     symbol: {
+                //       type: "text",
+                //       color: "white",
+                //       haloColor: "black",
+                //       haloSize: "1px",
+                //       text: cluster.count.toString(),
+                //       xoffset: 0,
+                //       yoffset: 0,
+                //       font: {
+                //         size: "12px",
+                //         family: "sans-serif",
+                //         weight: "bold",
+                //       },
+                //     },
+                //     text: cluster.count || 1,
+                //     cluster: isCluster,
+                //     size: size,
+                //   });
+                //   if (clusterLayer.current) {
+                //     clusterLayer.current.add(labelGraphic);
+                //   }
+                // }
               });
             }
           }
@@ -269,40 +261,36 @@ const Map = () => {
     const layer = new GraphicsLayer();
     clusterLayer.current = layer;
 
-    mapView.on("click", (event) => {
-      mapView.hitTest(event).then((response) => {
-        const graphic = response.results[0]?.graphic;
-        setIsAddPointPopUp(true);
-        setMapCoordinates({
-          latitude: event?.mapPoint?.latitude,
-          longitude: event?.mapPoint?.longitude,
-        });
-        const point = new Point({
-          x: event?.mapPoint?.longitude,
-          y: event?.mapPoint?.latitude,
-          spatialReference: { wkid: 4326 },
-        });
-        const screenPoint = mapView.toScreen(point);
-        setPopupPosition({
-          left: `${screenPoint.x}px`,
-          top: `${screenPoint.y}px`,
-        });
-        setIsPointAdd(true);
-        setPopupCoordinates([
-          event?.mapPoint?.longitude,
-          event?.mapPoint?.latitude,
-        ]);
-        if (graphic?.cluster) {
-          const point = new Point({
-            x: graphic?.coordinates[0],
-            y: graphic?.coordinates[1],
-            spatialReference: { wkid: 4326 },
-          });
-        } else if (graphic?.text === 1) {
-          console.log(graphic?.coordinates[0]);
-        }
-      });
-    });
+    // mapView.on("click", (event) => {
+    //   mapView.hitTest(event).then((response) => {
+        // const graphic = response.results[0]?.graphic;
+        // setIsAddPointPopUp(true);
+        // const point = new Point({
+        //   x: event?.mapPoint?.longitude,
+        //   y: event?.mapPoint?.latitude,
+        //   spatialReference: { wkid: 4326 },
+        // });
+        // const screenPoint = mapView.toScreen(point);
+        // setPopupPosition({
+        //   left: `${screenPoint.x}px`,
+        //   top: `${screenPoint.y}px`,
+        // });
+        // setIsPointAdd(true);
+        // setPopupCoordinates([
+        //   event?.mapPoint?.longitude,
+        //   event?.mapPoint?.latitude,
+        // ]);
+        // if (graphic?.cluster) {
+        //   const point = new Point({
+        //     x: graphic?.coordinates[0],
+        //     y: graphic?.coordinates[1],
+        //     spatialReference: { wkid: 4326 },
+        //   });
+        // } else if (graphic?.text === 1) {
+        //   console.log(graphic?.coordinates[0]);
+        // }
+    //   });
+    // });
 
     mapView.map.add(layer, 5);
     loadModules([
@@ -372,8 +360,7 @@ const Map = () => {
         });
     });
 
-    setView(mapView); // Set the view state
-    setIsMapCreated(true); // Map creation flag
+    setView(mapView);
 
     // Cleanup on unmount
     return () => {
@@ -440,7 +427,6 @@ const Map = () => {
         isPointAdd={isPointAdd}
         setIsPointAdd={setIsPointAdd}
         setPopupCoordinates={setPopupCoordinates}
-        mapCoordinates={mapCoordinates}
         popupCoordinates={popupCoordinates}
         isPopUpOpen={openSideBar}
         setIsPopUpOpen={setOpenSideBar}

@@ -23,11 +23,7 @@ interface LeadData {
   stage?: string;
   stage_updated_at?: string;
 }
-
-interface PopupCoordinates {
-  0: number;
-  1: number;
-}
+type PopupCoordinates = [number, number] | null;
 
 interface SideBarProps {
   setIsPointAdd: React.Dispatch<React.SetStateAction<boolean>>;
@@ -198,7 +194,10 @@ const SideBar: React.FC<SideBarProps> = ({
                     value={data?.longitude}
                     onChange={(e) =>
                       setPopupCoordinates((pre) => {
-                        return [parseFloat(e.target.value), pre[1]];
+                        if (pre) {
+                          return [parseFloat(e.target.value), pre[1]];
+                        }
+                        return pre;
                       })
                     }
                   />
@@ -213,7 +212,10 @@ const SideBar: React.FC<SideBarProps> = ({
                     value={data?.latitude}
                     onChange={(e) =>
                       setPopupCoordinates((pre) => {
-                        return [pre[0], parseFloat(e.target.value)];
+                        if (pre) {
+                          return [pre[0], parseFloat(e.target.value)];
+                        }
+                        return pre;
                       })
                     }
                   />
