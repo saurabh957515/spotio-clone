@@ -17,5 +17,8 @@
   "bugs": {
     "url": "https://github.com/saurabh957515/spotio-clone/issues"
   },
-  "homepage": "https://github.com/saurabh957515/spotio-clone#readme"
+  "homepage": "https://github.com/saurabh957515/spotio-clone#readme",
+  "dependencies": {
+    "@types/react": "^19.0.1"
+  }
 }
