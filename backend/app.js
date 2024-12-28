@@ -9,10 +9,8 @@ const cors = require("cors");
 const app = express();
 const port = 3000;
 const fs = require("fs");
-
 app.use(cors());
 app.use(express.json());
-let Supercluster;
 app.use(express.static(path.join(__dirname, "../spotio-clone/dist")));
 // app.get('*', (req, res) => {
 //   res.sendFile(path.join(__dirname, '../spotio-clone/dist', 'index.html'));
@@ -32,7 +30,6 @@ function readCache() {
   if (fs.existsSync(cacheFilePath)) {
     try {
       const data = fs.readFileSync(cacheFilePath, "utf-8");
-      console.log(data);
       return JSON.parse(data);
     } catch (error) {
       console.error("Error reading cache file:", error);
@@ -160,7 +157,6 @@ async function getLeadsInBoundingBox(
   maxLon,
   zoomLevel
 ) {
-
   if (currentAbortController) {
     currentAbortController.abort();
   }
@@ -172,8 +168,7 @@ async function getLeadsInBoundingBox(
   const cache = readCache();
   if (cache[cacheKey]) {
     console.log(`Cache hit for key: ${cacheKey}`);
-    console.log(cache[cacheKey]);
-    return cache[cacheKey]
+    return cache[cacheKey];
   }
   try {
     async function divideBoundingBoxAndAggregate(
@@ -194,7 +189,6 @@ async function getLeadsInBoundingBox(
           if (signal.aborted) {
             throw new Error("Request was aborted");
           }
-
           const subMinLat = parseFloat(minLat) + i * parseFloat(latStep);
           const subMaxLat = parseFloat(subMinLat) + parseFloat(latStep);
           const subMinLon = parseFloat(minLon) + j * parseFloat(lonStep);
@@ -203,44 +197,99 @@ async function getLeadsInBoundingBox(
             [parseFloat(subMinLon), parseFloat(subMinLat)], // Southwest corner
             [parseFloat(subMaxLon), parseFloat(subMaxLat)], // Northeast corner
           ];
+          let aggregationPipeline;
 
-          const aggregationPipeline = [
-            {
-              $match: {
-                geo: {
-                  $geoWithin: {
-                    $box: boundingBox,
-                  },
+          if (parseFloat(subMaxLon) < parseFloat(subMinLon)) {
+            // Handle the case where the bounding box wraps around
+            aggregationPipeline = [
+              {
+                $match: {
+                  $or: [
+                    {
+                      geo: {
+                        $geoWithin: {
+                          $box: [
+                            [parseFloat(subMinLon), parseFloat(subMinLat)],
+                            [180, parseFloat(subMaxLat)],
+                          ],
+                        },
+                      },
+                    },
+                    {
+                      geo: {
+                        $geoWithin: {
+                          $box: [
+                            [-180, parseFloat(subMinLat)],
+                            [parseFloat(subMaxLon), parseFloat(subMaxLat)],
+                          ],
+                        },
+                      },
+                    },
+                  ],
+                  "geo.coordinates": { $exists: true, $ne: null }, // Ensure coordinates exist
                 },
-                "geo.coordinates": { $exists: true, $ne: null }, // Ensure coordinates exist
               },
-            },
-            {
-              $group: {
-                _id: null,
-                count: { $sum: 1 }, // Count the number of documents in the sub-box
-                centerLat: { $avg: { $arrayElemAt: ["$geo.coordinates", 1] } }, // Average latitude
-                centerLon: { $avg: { $arrayElemAt: ["$geo.coordinates", 0] } }, // Average longitude
+              {
+                $group: {
+                  _id: null,
+                  count: { $sum: 1 }, // Count the number of documents in the sub-box
+                  centerLat: {
+                    $avg: { $arrayElemAt: ["$geo.coordinates", 1] },
+                  }, // Average latitude
+                  centerLon: {
+                    $avg: { $arrayElemAt: ["$geo.coordinates", 0] },
+                  }, // Average longitude
+                },
               },
-            },
-          ];
-          
+            ];
+          } else {
+            // Regular bounding box case
+            const boundingBox = [
+              [parseFloat(subMinLon), parseFloat(subMinLat)], // Southwest corner
+              [parseFloat(subMaxLon), parseFloat(subMaxLat)], // Northeast corner
+            ];
+            aggregationPipeline = [
+              {
+                $match: {
+                  geo: {
+                    $geoWithin: {
+                      $box: boundingBox,
+                    },
+                  },
+                  "geo.coordinates": { $exists: true, $ne: null }, // Ensure coordinates exist
+                },
+              },
+              {
+                $group: {
+                  _id: null,
+                  count: { $sum: 1 }, // Count the number of documents in the sub-box
+                  centerLat: {
+                    $avg: { $arrayElemAt: ["$geo.coordinates", 1] },
+                  }, // Average latitude
+                  centerLon: {
+                    $avg: { $arrayElemAt: ["$geo.coordinates", 0] },
+                  }, // Average longitude
+                },
+              },
+            ];
+          }
+
           results.push(
             collection
-            .aggregate(aggregationPipeline)
-            .toArray()
-            .then((result) => {
-              if (result.length > 0) {
-                return {
-                  boundingBox,
-                  center: {
-                    lat: result[0].centerLat,
-                    lon: result[0].centerLon,
-                  },
-                  count: result[0].count,
-                };
-              }
-              return null;
+              .aggregate(aggregationPipeline)
+              .toArray()
+              .then((result) => {
+                if (result.length > 0) {
+                  return {
+                    boundingBox,
+                    center: {
+                      lat: result[0].centerLat,
+                      lon: result[0].centerLon,
+                    },
+                    count: result[0].count,
+                  };
+                }
+                return null;
               })
           );
           if (signal.aborted) {
@@ -264,7 +313,6 @@ async function getLeadsInBoundingBox(
       maxLon,
       signal
     );
-console.log('final result',result)
     if (result) {
       cacheClusterData(cacheKey,result);
     }
