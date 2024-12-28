@@ -70,7 +70,9 @@ const Map = () => {
         }
 
         controller = new AbortController();
-
+        if (clusterLayer.current) {
+          clusterLayer.current.removeAll();
+        }
         try {
           const { data, errors }: ApiResponse = await axios.get("/api/getby", {
             params: {
@@ -85,9 +87,7 @@ const Map = () => {
 
           if (!errors) {
             const newCluster = data;
-            if (clusterLayer.current) {
-              clusterLayer.current.removeAll();
-            }
+          
             if (newCluster?.length > 0) {
               newCluster?.forEach((cluster: Cluster) => {
                 const longitude = cluster?.center?.lon;
@@ -179,7 +179,7 @@ const Map = () => {
       map: new ArcGISMap({
         basemap: "streets-navigation-vector",
       }),
-      zoom: 2,
+      zoom: 3,
       center: [-84.006, 40.7128],
       constraints: {
         minZoom: 2,

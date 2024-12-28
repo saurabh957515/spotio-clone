@@ -4,3 +4,4 @@
 /backend/package-lock.json
 /public/build
 *dist
+cache-cluster.json

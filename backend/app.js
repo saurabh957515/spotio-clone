@@ -3,28 +3,75 @@ const connectToMongoDB = require("./db/connectToMongoDB");
 const Lead = require("./models/Lead");
 const dotenv = require("dotenv");
 dotenv.config();
-const fs = require("fs");
 const path = require("path");
 const csv = require("csv-parser");
 const cors = require("cors");
 const app = express();
 const port = 3000;
+const fs = require("fs");
+
 app.use(cors());
 app.use(express.json());
 let Supercluster;
-app.use(express.static(path.join(__dirname, '../spotio-clone/dist')));
-
-// Handle SPA
+app.use(express.static(path.join(__dirname, "../spotio-clone/dist")));
 // app.get('*', (req, res) => {
 //   res.sendFile(path.join(__dirname, '../spotio-clone/dist', 'index.html'));
 // });
+
+const cacheFilePath = path.join(__dirname, "cache", "cache-cluster.json");
+
+function ensureCacheDirectory() {
+  const cacheDir = path.dirname(cacheFilePath);
+  if (!fs.existsSync(cacheDir)) {
+    fs.mkdirSync(cacheDir, { recursive: true });
+  }
+}
+
+function readCache() {
+  ensureCacheDirectory();
+  if (fs.existsSync(cacheFilePath)) {
+    try {
+      const data = fs.readFileSync(cacheFilePath, "utf-8");
+      console.log(data);
+      return JSON.parse(data);
+    } catch (error) {
+      console.error("Error reading cache file:", error);
+    }
+  }
+  return {};
+}
+
+function writeCache(cacheData) {
+  ensureCacheDirectory();
+  try {
+    fs.writeFileSync(
+      cacheFilePath,
+      JSON.stringify(cacheData, null, 2),
+      "utf-8"
+    );
+    console.log("Cache successfully written to file.");
+  } catch (error) {
+    console.error("Error writing to cache file:", error);
+  }
+}
+
+async function cacheClusterData(key, data) {
+  const cache = readCache();
+  cache[key] = data;
+  writeCache(cache);
+}
+
 (async () => {
   const module = await import("supercluster");
-  Supercluster = module.default; // Ensure you're accessing the default export
+  Supercluster = module.default;
 })();
 
 app.get("/api/getby", async (req, res) => {
   const { minLat, maxLat, minLon, maxLon, zoomLevel } = req?.query;
+  if (!minLat || !maxLat || !minLon || !maxLon || !zoomLevel) {
+    console.log("Missing or invalid query parameters");
+    return res.json([]); // Send an empty array as the response
+  }
   await getLeadsInBoundingBox(minLat, maxLat, minLon, maxLon, zoomLevel)
     .then((leads) => {
       res.json(leads);
@@ -57,7 +104,6 @@ async function importData() {
     let totalRowsProcessed = 0;
     const leads = [];
     const filePath = path.join(__dirname, "leads.csv");
-    console.log(filePath, __dirname);
     fs.createReadStream(filePath)
       .pipe(csv())
       .on("data", (row) => {
@@ -106,8 +152,7 @@ async function importData() {
     console.error("Error importing data:", error);
   }
 }
-let currentAbortController = null; // Track the latest AbortController
-
+let currentAbortController = null;
 async function getLeadsInBoundingBox(
   minLat,
   maxLat,
@@ -115,15 +160,21 @@ async function getLeadsInBoundingBox(
   maxLon,
   zoomLevel
 ) {
-  // Cancel the previous request if it exists
+
   if (currentAbortController) {
     currentAbortController.abort();
   }
 
-  // Create a new AbortController for this request
   currentAbortController = new AbortController();
   const signal = currentAbortController.signal;
 
+  const cacheKey = zoomLevel;
+  const cache = readCache();
+  if (cache[cacheKey]) {
+    console.log(`Cache hit for key: ${cacheKey}`);
+    console.log(cache[cacheKey]);
+    return cache[cacheKey]
+  }
   try {
     async function divideBoundingBoxAndAggregate(
       collection,
@@ -173,23 +224,23 @@ async function getLeadsInBoundingBox(
               },
             },
           ];
-
+          
           results.push(
             collection
-              .aggregate(aggregationPipeline)
-              .toArray()
-              .then((result) => {
-                if (result.length > 0) {
-                  return {
-                    boundingBox,
-                    center: {
-                      lat: result[0].centerLat,
-                      lon: result[0].centerLon,
-                    },
-                    count: result[0].count,
-                  };
-                }
-                return null;
+            .aggregate(aggregationPipeline)
+            .toArray()
+            .then((result) => {
+              if (result.length > 0) {
+                return {
+                  boundingBox,
+                  center: {
+                    lat: result[0].centerLat,
+                    lon: result[0].centerLon,
+                  },
+                  count: result[0].count,
+                };
+              }
+              return null;
               })
           );
           if (signal.aborted) {
@@ -198,22 +249,12 @@ async function getLeadsInBoundingBox(
         }
       }
       const response = await Promise.all(results);
+
       return response?.filter((res) => res);
     }
 
     const db = await connectToMongoDB();
     const collection = db.collection("leads");
-
-    const query = {
-      geo: {
-        $geoWithin: {
-          $box: [
-            [parseFloat(minLon), parseFloat(minLat)], // Southwest corner
-            [parseFloat(maxLon), parseFloat(maxLat)], // Northeast corner
-          ],
-        },
-      },
-    };
 
     const result = await divideBoundingBoxAndAggregate(
       collection,
@@ -223,6 +264,10 @@ async function getLeadsInBoundingBox(
       maxLon,
       signal
     );
+console.log('final result',result)
+    if (result) {
+      cacheClusterData(cacheKey,result);
+    }
     return result;
   } catch (err) {
     if (err.message === "Request was aborted") {
@@ -233,24 +278,6 @@ async function getLeadsInBoundingBox(
   }
 }
 
-const minLng = -83.8710725441986;
-const minLat = 33.28047556980069;
-const maxLng = -75.41159988795084;
-const maxLat = 39.42387792384459;
-
-// minLat: 33.28047556980069
-// maxLat: 39.42387792384459
-// minLon: -83.8710725441986
-// maxLon: -75.41159988795084
-// getLeadsInBoundingBox(minLng, minLat, maxLng, maxLat)
-//   .then((leads) => {
-//     console.log(leads); // Print or handle the leads data
-//   })
-//   .catch((err) => {
-//     console.error(err);
-//   });
-// importData();
-// Start the server
 app.listen(port, () => {
   connectToMongoDB();
   console.log(`Server running on http://localhost:${port}`);
